@@ -1,0 +1,44 @@
+{
+    "name": "queents/payment-module",
+    "description": "Payment Module for VILT framework",
+    "license": "MIT",
+    "keywords": [
+        "laravel",
+        "VILT",
+        "payment",
+        "resource",
+        "page",
+        "vilt-admin",
+        "Vilt stack",
+        "admin panel",
+        "admin one",
+        "vuejs",
+        "ineriajs",
+        "tailwind.css"
+    ],
+    "homepage": "https://www.queentechsolutions.net",
+
+    "authors": [
+        {
+            "name": "khaled abodaif",
+            "email": "khaled.abodaif@yahoo.com",
+            "role": "Software Engineer"
+
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Modules\\Payment\\Providers\\PaymentFacadeServiceProvider"
+            ],
+            "aliases": {
+                "KhaledPayment":"Modules\\Payment\\Facades\\Payment"
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Payment\\": ""
+        }
+    }
+}
