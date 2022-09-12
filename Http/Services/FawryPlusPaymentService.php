@@ -1,14 +1,20 @@
 <?php
 
 namespace Modules\Payment\Http\Services;
+use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Validator;
 
 use Modules\Payment\Entities\PaymentStatus;
-use Modules\Payment\Events\CallBackEvent;
+use Modules\Payment\Enums\FawryEnum;
+use Modules\Payment\Events\FawryCallBackEvent;
+use Modules\Payment\Events\FawryRequestCreatedEvent;
 use Modules\Payment\Http\Helpers\HttpHelper;
 use Modules\Payment\Http\Helpers\PaymentSaveToLogs;
 use Modules\Payment\Http\Interfaces\IFawryInterface;
 use Modules\Payment\Http\Interfaces\IPaymentInterface;
 use Modules\Payments\Entities\Payment;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Collection;
 
 class FawryPlusPaymentService implements IPaymentInterface, IFawryInterface
 {
@@ -16,35 +22,15 @@ class FawryPlusPaymentService implements IPaymentInterface, IFawryInterface
     use HttpHelper,PaymentSaveToLogs;
 
 
-    private $uri;
-    private $secretKey;
-    private $merchantCode;
-    private $integrations;
-    private $data = [];
-    private $merchantRefNum ;
-    private $paymentMethods=[
-        "2" => "PayAtFawry",
-        "1" => "CARD"
-    ];
-    private const VALIDATION=["order_id",
-        "order_table",
-        "paymentMethodId","amount","notes","returnUrl","chargeItems"];
+    private array $integrations;
+    private Collection $data ;
+    private int $merchantRefNum ;
 
-    public function validate() {
-
-        if(request()->has(self::VALIDATION)){
-            return $this;
-        }
-
-        throw new \Exception("You Have Messing Parameters");
-
-    }
-    /*
-        constractor get the data from config file that provided from service provider
-
+    /**
+     * constructor get the data from factory and adapt it as array
+     * @param Collection $integrations
      */
-
-    public function __construct($integrations)
+    public function __construct(Collection $integrations)
     {
         foreach ($integrations as $integration)
             $this->integrations[$integration->key] = $integration->value;
@@ -52,19 +38,44 @@ class FawryPlusPaymentService implements IPaymentInterface, IFawryInterface
 
 
     /**
+     * @param array $attributes
+     * @return $this
+     * @throws ValidationException
      *
-     * initiat the request and return self object
      */
+    public function validate(array $attributes):self {
 
-    public function init($attributes)
+        $validation =Validator::make($attributes, FawryEnum::VALIDATION);
+
+        if ($validation->fails()) {
+            throw ValidationException::withMessages($validation->errors()->messages());
+
+        }
+
+        $this->data = collect($validation->validated());
+        return $this;
+    }
+
+
+    /**
+     *
+     * initial the request and return self object
+     * @return $this
+     */
+    public function init():self
     {
 
-        $this->data = collect($attributes->only(['returnUrl', 'chargeItems']))->merge([
+        $this->data = collect($this->data->only(['returnUrl', 'chargeItems','paymentMethodId']))->merge([
             'merchantCode' => $this->integrations['merchant_code'],
-            "merchantRefNum" => $this->merchantRefNum
+            "merchantRefNum" => $this->merchantRefNum,
+            "authCaptureModePayment"=>false,
+            'customerMobile' => auth()->user()->phone,
+            'customerEmail' => auth()->user()->email,
         ]);
-        $this->data["paymentMethod"]=$this->paymentMethods[$attributes->get("paymentMethodId")];
+        $this->data["paymentMethod"]=FawryEnum::PAYMENT_METHODS[$this->data["paymentMethodId"]];
         $this->data['signature'] = $this->generateSignature();
+
+        event(new FawryRequestCreatedEvent($this->data));
 
         return $this;
     }
@@ -73,12 +84,15 @@ class FawryPlusPaymentService implements IPaymentInterface, IFawryInterface
     /**
      *
      * call the http post method and return status ,data and message
-     *
+     * check if the app is local to add integration url
      */
 
-    public function pay()
+    public function pay():array
     {
-        return $this->post($this->integrations['testing_uri'], $this->data);
+        return $this->post(
+            App::environment(['local', 'staging'])
+            ?$this->integrations['testing_uri']
+            :$this->integrations['FAWRY_PR_URI'], $this->data);
     }
 
 
@@ -112,26 +126,27 @@ class FawryPlusPaymentService implements IPaymentInterface, IFawryInterface
         }
 
 
-        event(new CallBackEvent($request));
+        event(new FawryCallBackEvent($request));
     }
 
 
-    public function saveToPayment()
+    public function saveToPayment():self
     {
         $user=auth()->user();
         $record=Payment::create(
             [
                 "model_id"=>$user->id,
                 "model_table" => $user->getTable(),
-                "order_id" =>request()->get("order_id"),
-                "order_table" =>request()->get('order_table'),
-                "payment_method_id" => request()->get("paymentMethodId"),
+                "order_id" =>$this->data['order_id'],
+                "order_table" =>$this->data['order_table'],
+                "payment_method_id" => $this->data['paymentMethodId'],
                 "payment_status_id" => 3,
-                "amount" =>request()->get("amount"),
-                "notes" =>request()->get('notes')
+                "amount" =>$this->data['amount'],
+                "notes" =>$this->data['notes']
 
             ]
         );
+
         if ($record)
             $this->merchantRefNum=$record->id;
 
@@ -141,10 +156,10 @@ class FawryPlusPaymentService implements IPaymentInterface, IFawryInterface
     /**
      *
      * generating signature that fawry want for auth
-     *
+     * @return string
      *  */
 
-    public function generateSignature()
+    public function generateSignature():string
     {
         $data = collect($this->data['chargeItems']);
 

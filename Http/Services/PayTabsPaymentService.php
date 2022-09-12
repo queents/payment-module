@@ -5,8 +5,12 @@ namespace Modules\Payment\Http\Services;
 
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Modules\Payment\Enums\PaytabEnum;
 use Modules\Payment\Events\CallBackEvent;
+use Modules\Payment\Events\PaytabsCallBackEvent;
+use Modules\Payment\Events\PaytabsRequestCreatedEvent;
 use Modules\Payment\Http\Helpers\ApiResponse;
 use Modules\Payment\Http\Helpers\HttpHelper;
 use Modules\Payment\Http\Helpers\PaymentSaveToLogs;
@@ -18,12 +22,11 @@ class PayTabsPaymentService implements IPaymentInterface
     use HttpHelper,PaymentSaveToLogs;
 
 
+
     private  $merchantRefNum;
     private $integrations;
     private $data = [];
-    private const VALIDATION=["order_id",
-        "order_table",
-        "paymentMethodId","amount","notes","returnUrl","notes","cart_currency"];
+
 
 
     public function __construct($integrations)
@@ -32,11 +35,29 @@ class PayTabsPaymentService implements IPaymentInterface
             $this->integrations[$integration->key] = $integration->value;
     }
 
+    /**
+     * @param array $attributes
+     * @return $this
+     * @throws ValidationException
+     *
+     */
+    public function validate(array $attributes):self {
 
-    public function init($attributes)
+        $validation =Validator::make($attributes, PaytabEnum::VALIDATION);
+
+        if ($validation->fails()) {
+            throw ValidationException::withMessages($validation->errors()->messages());
+
+        }
+
+        $this->data = collect($validation->validated());
+        return $this;
+    }
+
+    public function init():self
     {
+        // in http helper
         $this->header["authorization"] = $this->integrations['secret_key'];
-
 
         $this->data = [
 
@@ -44,17 +65,19 @@ class PayTabsPaymentService implements IPaymentInterface
             "cart_id" =>(string) $this->merchantRefNum,
             "tran_type"=>          PaytabEnum::PAYTABS_TYPE,
             "tran_class"=>         PaytabEnum::PAYTABS_CLASS,
-            "cart_currency"=>      $attributes['cart_currency'],
-            "cart_amount"=> $attributes["amount"],
-            "cart_description"=>   $attributes["notes"],
+            "cart_currency"=>      "EGP",
+            "cart_amount"=> $this->data["amount"],
+            "cart_description"=>   $this->data["notes"],
             "callback"=>           PaytabEnum::PAYTABS_CLLBACK,
-            "return"=>             $attributes["returnUrl"]
+            "return"=>             $this->data["returnUrl"]
         ];
+
+        event(new PaytabsRequestCreatedEvent($this->data));
 
         return $this;
     }
 
-    public function pay()
+    public function pay():array
     {
         $response=$this->post(PaytabEnum::PAYTABS_DOMAIN,$this->data);
         $response['data']=json_decode($response['data']);
@@ -63,19 +86,10 @@ class PayTabsPaymentService implements IPaymentInterface
 
     public function callBack($request)
     {
-        event(new CallBackEvent($request));
+        event(new PaytabsCallBackEvent($request));
     }
 
-    public function validate()
-    {
-        if(request()->has(self::VALIDATION)){
-            return $this;
-        }
-
-        throw new \Exception("You Have Messing Parameters");
-
-    }
-    public function saveToPayment()
+    public function saveToPayment():self
     {
         $user=auth()->user();
         $record=Payment::create(

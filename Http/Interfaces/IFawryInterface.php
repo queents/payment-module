@@ -5,6 +5,6 @@ namespace Modules\Payment\Http\Interfaces;
 interface IFawryInterface
 {
 
-    public function generateSignature();
-    
+    public function generateSignature():string;
+
 }

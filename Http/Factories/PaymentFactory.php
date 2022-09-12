@@ -16,15 +16,17 @@ use Modules\Payment\Http\Services\FawryPlusPaymentService;
 class PaymentFactory{
 
 
-    public $gateways = [];
+    public array $gateways = [];
 
     /**
      *
      * register array of payment methods that get it from service provider
      * array consist of name of method and object from payment interface calss
-     *
+     * @param string $name
+     * @param IPaymentInterface $instance
+     * @return PaymentFactory
      */
-    function register ($name, IPaymentInterface $instance)
+    function register (string $name, IPaymentInterface $instance):self
     {
         $this->gateways[$name] = $instance;
         return $this;
@@ -34,10 +36,11 @@ class PaymentFactory{
      *
      * get the payment class that the user want
      * if not exist return ex
-     *
+     * @param string $name
+     * @return IPaymentInterface
      */
 
-    function get($name)
+    function get(string $name):IPaymentInterface|Exception
     {
         if (array_key_exists($name, $this->gateways)) {
             return $this->gateways[$name];
@@ -46,6 +49,12 @@ class PaymentFactory{
         }
     }
 
+    /**
+    *
+     * get payment methods from table
+     * register payment class into getways array
+     * set integration recorder to the class constructor
+     */
     public function fillData()
     {
 

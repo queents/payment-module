@@ -16,22 +16,22 @@ use Modules\Payment\Http\Requests\PaymobRequest;
 
 class PaymentController extends Controller
 {
-    use PaymentSaveToLogs;
-
-    private $payment;
-
-    /**
-     * this constructor get an object from factory class that
-     * get an instance from payment methods you can find
-     * it's registration in payment service provider
-     * @param PaymentFactory $payment
-     */
-    public function __construct(PaymentFactory $payment)
-    {
-        $this->payment = $payment;
-        $this->payment->fillData();
-
-    }
+//    use PaymentSaveToLogs;
+//
+//    private $payment;
+//
+//    /**
+//     * this constructor get an object from factory class that
+//     * get an instance from payment methods you can find
+//     * it's registration in payment service provider
+//     * @param PaymentFactory $payment
+//     */
+//    public function __construct(PaymentFactory $payment)
+//    {
+//        $this->payment = $payment;
+//        $this->payment->fillData();
+//
+//    }
 
 
     /**
@@ -48,43 +48,25 @@ class PaymentController extends Controller
     public function paymentMethod(Request $request)
     {
 
-        try {
-            $result = $this->payment->get(request()->get('paymentMethodId'))
-                ->validate()
-                ->saveToPayment()
-                ->init($request)
-                ->pay();
-        } catch (\Exception $e) {
 
-            $this->saveToLogs($request->all(),$e->getMessage());
-            return ApiResponse::errors($e->getMessage(), 400);
-        }
+        $payment=\PaymentModule::pay($request->all());
 
+        if ($payment->getErrorMessage())
+            return ApiResponse::errors($payment->getErrorMessage(),400);
 
-        if (!$result['status']){
-            $this->saveToLogs($request->all(),$result);
-            return ApiResponse::errors($result['message'], 500);
-
-        }
-
-        return  ApiResponse::data($result['data'], "done", 200);
+        return  ApiResponse::data($payment->getData(), "done", 200);
     }
 
 
     /**
-     * @param Request $request
+     * @param Request $r    equest
      * @param int $paymentMethod
      */
     public function paymentCallback(Request $request, int $paymentMethod)
     {
+        \PaymentModule::callback($request->all(),$paymentMethod);
 
-        try {
-            $this->payment->get($paymentMethod)->callBack($request->all());
-        } catch (\Exception $e) {
-
-            $this->saveToLogs(array_merge($request->all(),["paymentMethod" => $paymentMethod]),$e->getMessage());
-
-        }
     }
+
 
 }

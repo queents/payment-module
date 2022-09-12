@@ -2,8 +2,14 @@
 
 namespace Modules\Payment\Http\Services;
 
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Modules\Payment\Enums\PaymobEnum;
 use Modules\Payment\Events\CallBackEvent;
+use Modules\Payment\Events\fawryRequestCreatedEvent;
+use Modules\Payment\Events\PaymobCallBackEvent;
+use Modules\Payment\Events\PaymobRequestCreatedEvent;
 use Modules\Payment\Http\Helpers\HttpHelper;
 use Modules\Payment\Http\Helpers\PaymentSaveToLogs;
 use Modules\Payment\Http\Interfaces\IPaymentInterface;
@@ -16,35 +22,49 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
     use HttpHelper,PaymentSaveToLogs;
 
 
-    private $integrations;
-    private $attributes;
-    private $paymentToken;
-    private $merchantRefNum;
-    private $data = [];
-    private const VALIDATION=["order_id",
-                                "order_table",
-                                "paymentMethodId","amount","notes","first_name","last_name","phone"];
+    private array $integrations;
+    private Collection $attributes;
+    private mixed $paymentToken;
+    private int $merchantRefNum;
+    private Collection $data;
 
-    /*
-        constractor get the data from config file that provided from service provider
-
+    /**
+     * constructor get the data from factory and adapt it as array
+     * @param Collection $integrations
      */
-
-    public function __construct($integrations)
+    public function __construct(Collection $integrations)
     {
         foreach ($integrations as $integration)
             $this->integrations[$integration->key] = $integration->value;
     }
 
+    /**
+     * @param array $attributes
+     * @return $this
+     * @throws ValidationException
+     *
+     */
+    public function validate(array $attributes):self {
+
+        $validation =Validator::make($attributes, PaymobEnum::VALIDATION);
+
+        if ($validation->fails()) {
+            throw ValidationException::withMessages($validation->errors()->messages());
+
+        }
+
+        $this->data = collect($validation->validated());
+        return $this;
+    }
 
     /**
      *
-     * initiat the request and return self object
+     * initiate the request and return self object
+     * paymob consist of 3 steps
      */
 
-    public function init($attributes)
+    public function init():self
     {
-        $this->attributes = $attributes;
 
         try {
             $authToken=$this->authenticationRequest();
@@ -67,13 +87,15 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
      *
      */
 
-    public function pay()
+    public function pay():array
     {
 
-        $res = ["status" => true,
+        $res = [
+            "status" => true,
             'data' => PaymobEnum::PAYMOB_DOMAIN.PaymobEnum::IFRAME_REQUEST
                 . $this->integrations['PAYMOB_IFRAME_ID']
-                . "?payment_token=" . $this->paymentToken->token];
+                . "?payment_token="
+                . $this->paymentToken->token];
 
         return $res;
     }
@@ -85,7 +107,7 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
      *
      * event and the user deal with the response if PAID,EXPIRED etc
      *
-     *https://apimeetmot.emalleg.net/api/callbackPayMob
+     *
      */
     public function callBack($request)
     {
@@ -106,9 +128,16 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
             $this->saveToLogs($request, $e->getMessage());
         }
 
-        event(new CallBackEvent($request));
+        event(new PaymobCallBackEvent($request));
     }
-    public function saveToPayment(){
+
+
+    /**
+     * save payment to table
+     * and generate reference code
+     * @return $this
+     */
+    public function saveToPayment():self{
 
         $user=auth()->user();
 
@@ -116,12 +145,12 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
             [
                 "model_id"=>$user->id,
                 "model_table" => $user->getTable(),
-                "order_id" =>request()->get("order_id"),
-                "order_table" =>request()->get('order_table'),
-                "payment_method_id" => request()->get("paymentMethodId"),
+                "order_id" =>$this->data["order_id"],
+                "order_table" =>$this->data['order_table'],
+                "payment_method_id" => $this->data["paymentMethodId"],
                 "payment_status_id" => 3,
-                "amount" =>request()->get("amount"),
-                "notes" =>request()->get('notes')
+                "amount" =>$this->data["amount"],
+                "notes" =>$this->data['notes']
             ]
         );
 
@@ -150,7 +179,7 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
             $this->post(PaymobEnum::PAYMOB_DOMAIN.PaymobEnum::ORDER_REQUEST,
                 ["auth_token" => $token,
                     "delivery_needed" => "false",
-                    "amount_cents" => $this->attributes->amount,
+                    "amount_cents" => $this->data['amount'],
                     "currency"=> "EGP",
                     "merchant_order_id"=> $this->merchantRefNum."Paymob".rand(10,9999),
                     "items" => []
@@ -163,30 +192,41 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
 
     }
 
-    public function PaymentKeyRequest(mixed $order,string $token): mixed
+    /**
+     * @param mixed $order
+     * @param string $token
+     * @return mixed
+     * @throws \Exception
+     *
+     * create request and fir event
+     * the event push data by reference
+     */
+    public function PaymentKeyRequest(mixed $order, string $token): mixed
     {
-        $result =
-            $this->post(PaymobEnum::PAYMOB_DOMAIN.PaymobEnum::PAYMENT_TOKEN_REQUEST,
-                ["auth_token" => $token,
-                    "expiration" => 36000,
-                    "amount_cents" => $order->amount_cents,
-                    "order_id" => $order->id,
-                    "billing_data" =>
-                        ["apartment" => "NA",
-                            "email" => 'NA',
-                            "floor" => "NA",
-                            "first_name" => $this->attributes->first_name,
-                            "street" => "NA",
-                            "building" => "NA",
-                            "phone_number" => $this->attributes->phone,
-                            "shipping_method" => "NA",
-                            "postal_code" => "NA",
-                            "city" => "NA",
-                            "country" => "NA",
-                            "last_name" => $this->attributes->last_name,
-                            "state" => "NA"],
-                    "currency" => "EGP",
-                    "integration_id" => env('PAYMOB_MODE') == "live" ? $this->integrations['PAYMOB_LIVE_INTEGRATION_ID'] : $this->integrations['PAYMOB_SANDBOX_INTEGRATION_ID'] ]);
+        $request=["auth_token" => $token,
+            "expiration" => 36000,
+            "amount_cents" => $order->amount_cents,
+            "order_id" => $order->id,
+            "billing_data" =>
+                ["apartment" => "NA",
+                    "email" => 'NA',
+                    "floor" => "NA",
+                    "first_name" => $this->data['first_name'],
+                    "street" => "NA",
+                    "building" => "NA",
+                    "phone_number" => $this->data['phone'],
+                    "shipping_method" => "NA",
+                    "postal_code" => "NA",
+                    "city" => "NA",
+                    "country" => "NA",
+                    "last_name" => $this->data['last_name'],
+                    "state" => "NA"],
+            "currency" => "EGP",
+            "integration_id" => env('PAYMOB_MODE') == "live" ? $this->integrations['PAYMOB_LIVE_INTEGRATION_ID'] : $this->integrations['PAYMOB_SANDBOX_INTEGRATION_ID'] ];
+
+        event(new PaymobRequestCreatedEvent($request));
+
+        $result = $this->post(PaymobEnum::PAYMOB_DOMAIN.PaymobEnum::PAYMENT_TOKEN_REQUEST,$request);
 
         if ($result['status'])
             return json_decode($result['data']);
@@ -195,13 +235,5 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
 
     }
 
-    public function validate() {
 
-        if(request()->has(self::VALIDATION)){
-            return $this;
-        }
-
-        throw new \Exception("You Have Messing Parameters");
-
-    }
 }

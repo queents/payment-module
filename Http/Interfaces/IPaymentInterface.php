@@ -5,8 +5,8 @@ namespace Modules\Payment\Http\Interfaces;
 interface IPaymentInterface
 {
 
-    public function init($attributes);
-    public function pay();
+    public function init():self;
+    public function pay():array;
     public function callBack($request);
-    public function validate();
+    public function validate( array $attributes):self;
 }
