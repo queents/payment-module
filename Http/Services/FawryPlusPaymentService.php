@@ -16,14 +16,27 @@ use Modules\Payments\Entities\Payment;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Collection;
 
+/**
+ *
+ */
 class FawryPlusPaymentService implements IPaymentInterface, IFawryInterface
 {
 
     use HttpHelper,PaymentSaveToLogs;
 
-
+    /**
+     * @var array
+     */
     private array $integrations;
+
+    /**
+     * @var Collection
+     */
     private Collection $data ;
+
+    /**
+     * @var int
+     */
     private int $merchantRefNum ;
 
     /**
@@ -32,8 +45,9 @@ class FawryPlusPaymentService implements IPaymentInterface, IFawryInterface
      */
     public function __construct(Collection $integrations)
     {
-        foreach ($integrations as $integration)
+        foreach ($integrations as $integration) {
             $this->integrations[$integration->key] = $integration->value;
+        }
     }
 
 
@@ -43,8 +57,8 @@ class FawryPlusPaymentService implements IPaymentInterface, IFawryInterface
      * @throws ValidationException
      *
      */
-    public function validate(array $attributes):self {
-
+    public function validate(array $attributes): self
+    {
         $validation =Validator::make($attributes, FawryEnum::VALIDATION);
 
         if ($validation->fails()) {
@@ -64,7 +78,6 @@ class FawryPlusPaymentService implements IPaymentInterface, IFawryInterface
      */
     public function init():self
     {
-
         $this->data = collect($this->data->only(['returnUrl', 'chargeItems','paymentMethodId']))->merge([
             'merchantCode' => $this->integrations['merchant_code'],
             "merchantRefNum" => $this->merchantRefNum,
@@ -98,38 +111,31 @@ class FawryPlusPaymentService implements IPaymentInterface, IFawryInterface
 
     /**
      *
-     * depending of what the callback will do
+     * depending on what the callback will do
      *
      * event and the user deal with the response if PAID,EXPIRED etc
      *
      *
      */
-
-
-    public function callBack($request)
+    public function callBack($request): void
     {
-
         try {
-
             $payment= Payment::with(['paymentStatus'])->find($request['merchantRefNumber']);
-
             $status=PaymentStatus::select('id')->whereJsonContains('name', ["en"=>$request['orderStatus']])->first()->id;
-
             $payment->payment_status_id = $status;
-
             $payment->transaction_code = $request['fawryRefNumber'];
-
             $payment->save();
         }catch (\Exception $e) {
-
             $this->saveToLogs($request->all(), $e->getMessage());
         }
-
 
         event(new FawryCallBackEvent($request));
     }
 
 
+    /**
+     * @return $this
+     */
     public function saveToPayment():self
     {
         $user=auth()->user();

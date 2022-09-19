@@ -9,53 +9,52 @@ use Modules\Payment\Vilt\Resources\PaymentLogResource\Traits\Translations;
 use Modules\Payment\Vilt\Resources\PaymentLogResource\Traits\Components;
 
 use Modules\Base\Services\Rows\Text;
-    use Modules\Base\Services\Rows\Toggle;
-    use Modules\Base\Services\Rows\Schema;
+use Modules\Base\Services\Rows\Toggle;
+use Modules\Base\Services\Rows\Schema;
 
 
 class PaymentLogResource extends Resource
 {
-        use Translations,Components;
+    use Translations, Components;
 
-        public ?string $model = PaymentLog::class;
-        public ?string $icon = "bx bxs-circle";
-        public ?string $group = "Payment";
-        public ?bool $api = true;
+    public ?string $model = PaymentLog::class;
+    public ?string $icon = "bx bx-history";
+    public ?string $group = "Payment";
+    public ?bool $api = true;
 
-        public function rows():array
-        {
-            return [
+    public function rows(): array
+    {
+        $this->canCreate = false;
+        $this->canEdit = false;
+        return [
+            Text::make('id')
+                ->label(__('ID'))
+                ->create(false)
+                ->edit(false),
 
+            Toggle::make('status')
+                ->label(__('Status'))
+                ->validation([
+                    "create" => "required|bool",
+                    "update" => "required|bool"
+                ]),
 
-                    Text::make('id')
-                        ->label(__('id'))
-                        ->create(false)
-                        ->edit(false),
+            Text::make('payload')
+                ->label(__('Payload'))
+                ->validation([
+                    "create" => "required|array",
+                    "update" => "required|array"
+                ])
+                ->options([]),
 
-                    Toggle::make('status')
-                        ->label(__('status'))
-                        ->validation([
-                            "create" => "required|bool",
-                            "update" => "required|bool"
-                        ]),
-
-                    Text::make('payload')
-                        ->label(__('payload'))
-                        ->validation([
-                            "create" => "required|array",
-                            "update" => "required|array"
-                        ])
-                        ->options([]),
-
-                Text::make('response')
-                        ->label(__('response'))
-                        ->validation([
-                            "create" => "required|array",
-                            "update" => "required|array"
-                        ])
-                        ->options([]),
-            ];
-
-        }
+            Text::make('response')
+                ->label(__('Response'))
+                ->validation([
+                    "create" => "required|array",
+                    "update" => "required|array"
+                ])
+                ->options([]),
+        ];
+    }
 
 }

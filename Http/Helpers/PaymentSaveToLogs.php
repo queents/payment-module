@@ -8,10 +8,13 @@ use Modules\Payment\Entities\PaymentLog;
 
 trait PaymentSaveToLogs
 {
-
-    public function saveToLogs(mixed $payload, mixed $response)
+    /**
+     * @param mixed $payload
+     * @param mixed $response
+     * @return void
+     */
+    public function saveToLogs(mixed $payload, mixed $response): void
     {
-
         PaymentLog::create(
             [
                 "status" => false,
@@ -20,5 +23,4 @@ trait PaymentSaveToLogs
             ]
         );
     }
-
 }

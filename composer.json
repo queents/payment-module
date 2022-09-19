@@ -1,6 +1,6 @@
 {
     "name": "queents/payment-module",
-    "description": "Payment Module for VILT framework",
+    "description": "Payment Services Integrations & Management Module for VILT Framework",
     "license": "MIT",
     "keywords": [
         "laravel",
@@ -17,13 +17,11 @@
         "tailwind.css"
     ],
     "homepage": "https://www.queentechsolutions.net",
-
     "authors": [
         {
             "name": "khaled abodaif",
             "email": "khaled.abodaif@yahoo.com",
             "role": "Software Engineer"
-
         }
     ],
     "extra": {

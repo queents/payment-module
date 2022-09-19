@@ -14,19 +14,18 @@ class PaymentService
     use PaymentSaveToLogs;
 
     private array $response= ['status' => 'false', 'message' => '','data' => ''];
-    private $payment;
+    private PaymentFactory $payment;
 
     /**
      * this constructor get an object from factory class that
      * get an instance from payment methods you can find
-     * it's registration in payment service provider
+     * its registration in payment service provider
      * @param PaymentFactory $payment
      */
-    private function init(PaymentFactory $payment)
+    private function init(PaymentFactory $payment): void
     {
         $this->payment = $payment;
         $this->payment->fillData();
-
     }
 
     public function pay(array $request):self
@@ -47,7 +46,6 @@ class PaymentService
 
         }
 
-
         if (!$result['status']){
             $this->saveToLogs($request,$result);
             $this->response['message']= $result['message'];
@@ -56,7 +54,6 @@ class PaymentService
 
         $this->response=$result;
         return  $this;
-
     }
 
 
@@ -71,10 +68,10 @@ class PaymentService
     }
 
     /**
-     * @param Request $r    equest
+     * @param Request $request
      * @param int $paymentMethod
      */
-    public function callback(Request $request, int $paymentMethod)
+    public function callback(Request $request, int $paymentMethod): void
     {
         $this->init(new PaymentFactory());
 
@@ -86,15 +83,4 @@ class PaymentService
 
         }
     }
-
-    public function errors(){
-
-    }
-
-    public function testingFacades() {
-        echo "Testing the Facades in Laravel.";
-    }
-
-
-
 }

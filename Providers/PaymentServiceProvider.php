@@ -5,6 +5,7 @@ namespace Modules\Payment\Providers;
 use Illuminate\Support\ServiceProvider;
 use Modules\Base\Services\Core\VILT;
 use Modules\Base\Services\Components\Base\Lang;
+use Modules\Payment\Console\InstallPayment;
 use Modules\Payment\Http\Factories\PaymentFactory;
 
 class PaymentServiceProvider extends ServiceProvider
@@ -26,14 +27,20 @@ class PaymentServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        $this->registerTranslations();
         $this->registerConfig();
-        $this->registerViews();
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+
+        $this->commands([
+            InstallPayment::class
+        ]);
 
         VILT::loadResources($this->moduleName);
         VILT::loadPages($this->moduleName);
         VILT::registerTranslation(Lang::make('payments.sidebar')->label(__('Payments')));
+        VILT::registerTranslation(Lang::make('payment_status.sidebar')->label(__('Payments Status')));
+        VILT::registerTranslation(Lang::make('payment_methods.sidebar')->label(__('Payments Methods')));
+        VILT::registerTranslation(Lang::make('payment_logs.sidebar')->label(__('Payments Logs')));
+        VILT::registerTranslation(Lang::make('payment_method_integrations.sidebar')->label(__('Payments Integrations')));
     }
     /**
      * Register the service provider.
@@ -42,11 +49,7 @@ class PaymentServiceProvider extends ServiceProvider
      */
     public function register()
     {
-
-
         $this->app->register(RouteServiceProvider::class);
-        $this->app->register(EventServiceProvider::class);
-        // register the factory as singleton
         $this->app->singleton(PaymentFactory::class);
     }
 
@@ -67,40 +70,6 @@ class PaymentServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register views.
-     *
-     * @return void
-     */
-    public function registerViews()
-    {
-        $viewPath = resource_path('views/modules/' . $this->moduleNameLower);
-
-        $sourcePath = module_path($this->moduleName, 'Resources/views');
-
-        $this->publishes([
-            $sourcePath => $viewPath
-        ], ['views', $this->moduleNameLower . '-module-views']);
-
-        $this->loadViewsFrom(array_merge($this->getPublishableViewPaths(), [$sourcePath]), $this->moduleNameLower);
-    }
-
-    /**
-     * Register translations.
-     *
-     * @return void
-     */
-    public function registerTranslations()
-    {
-        $langPath = resource_path('lang/modules/' . $this->moduleNameLower);
-
-        if (is_dir($langPath)) {
-            $this->loadTranslationsFrom($langPath, $this->moduleNameLower);
-        } else {
-            $this->loadTranslationsFrom(module_path($this->moduleName, 'Resources/lang'), $this->moduleNameLower);
-        }
-    }
-
-    /**
      * Get the services provided by the provider.
      *
      * @return array
@@ -108,16 +77,5 @@ class PaymentServiceProvider extends ServiceProvider
     public function provides()
     {
         return [];
-    }
-
-    private function getPublishableViewPaths(): array
-    {
-        $paths = [];
-        foreach (\Config::get('view.paths') as $path) {
-            if (is_dir($path . '/modules/' . $this->moduleNameLower)) {
-                $paths[] = $path . '/modules/' . $this->moduleNameLower;
-            }
-        }
-        return $paths;
     }
 }
