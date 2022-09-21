@@ -1,6 +1,7 @@
 {
     "name": "queents/payment-module",
     "description": "Payment Services Integrations & Management Module for VILT Framework",
+    "type": "laravel-module",
     "license": "MIT",
     "keywords": [
         "laravel",
