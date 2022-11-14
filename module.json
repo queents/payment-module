@@ -1,8 +1,21 @@
 {
     "name": "Payment",
     "alias": "payment",
-    "description": "",
-    "keywords": [],
+    "description": "Payment Services Integrations & Management Module for VILT Framework",
+    "keywords": [
+        "laravel",
+        "VILT",
+        "payment",
+        "resource",
+        "page",
+        "vilt-admin",
+        "Vilt stack",
+        "admin panel",
+        "admin one",
+        "vuejs",
+        "ineriajs",
+        "tailwind.css"
+    ],
     "priority": 0,
     "providers": [
         "Modules\\Payment\\Providers\\PaymentServiceProvider"

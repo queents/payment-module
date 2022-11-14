@@ -22,7 +22,7 @@ class Payment extends Model
 {
     /**
      * The "type" of the auto-incrementing ID.
-     * 
+     *
      * @var string
      */
     protected $keyType = 'integer';
@@ -30,7 +30,7 @@ class Payment extends Model
     /**
      * @var array
      */
-    protected $fillable = ['payment_method_id', 'payment_status_id', 'model_id', 'model_table', 'transaction_code', 'amount', 'notes', 'created_at', 'updated_at'];
+    protected $guarded = ['id'];
 
     /**
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo

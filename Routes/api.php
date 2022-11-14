@@ -16,8 +16,10 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post("/payment", 'PaymentController@paymentMethod');
+//    Route::post("/payment", 'PaymentController@paymentMethod');
 });
+Route::post("/payment", 'PaymentController@paymentMethod');
+
 Route::get("/payment/returnUrl/{paymentMethod}", 'PaymentController@paymentReturnUrl');
 
 Route::post("callback/payment/{method}", 'PaymentController@paymentCallback');

@@ -5,6 +5,7 @@ namespace Modules\Payment\Http\Services;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Modules\Payment\Entities\Payment;
 use Modules\Payment\Enums\PaymobEnum;
 use Modules\Payment\Events\CallBackEvent;
 use Modules\Payment\Events\fawryRequestCreatedEvent;
@@ -14,13 +15,10 @@ use Modules\Payment\Http\Helpers\HttpHelper;
 use Modules\Payment\Http\Helpers\PaymentSaveToLogs;
 use Modules\Payment\Http\Interfaces\IPaymentInterface;
 use Modules\Payment\Http\Interfaces\IPaymobInterface;
-use Modules\Payment\Http\Requests\PaymobRequest;
-use Modules\Payments\Entities\Payment;
 
 class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
 {
     use HttpHelper,PaymentSaveToLogs;
-
 
     private array $integrations;
     private Collection $attributes;
@@ -34,8 +32,9 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
      */
     public function __construct(Collection $integrations)
     {
-        foreach ($integrations as $integration)
+        foreach ($integrations as $integration) {
             $this->integrations[$integration->key] = $integration->value;
+        }
     }
 
     /**
@@ -44,15 +43,13 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
      * @throws ValidationException
      *
      */
-    public function validate(array $attributes):self {
+    public function validate(array $attributes):self
+    {
 
         $validation =Validator::make($attributes, PaymobEnum::VALIDATION);
-
         if ($validation->fails()) {
             throw ValidationException::withMessages($validation->errors()->messages());
-
         }
-
         $this->data = collect($validation->validated());
         return $this;
     }
@@ -60,21 +57,18 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
     /**
      *
      * initiate the request and return self object
-     * paymob consist of 3 steps
+     * PayMob consist of 3 steps
+     * @throws \Exception
      */
 
     public function init():self
     {
-
         try {
             $authToken=$this->authenticationRequest();
             $order=$this->orderRegistrationAPI($authToken->token);
             $this->paymentToken=$this->PaymentKeyRequest($order,$authToken->token);
-
         }catch (\Exception $e) {
-
-            throw new \Exception($e->getMessage());
-
+            throw new \RuntimeException($e->getMessage());
         }
 
         return $this;
@@ -86,10 +80,8 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
      * call the http post method and return status ,data and message
      *
      */
-
     public function pay():array
     {
-
         $res = [
             "status" => true,
             'data' => PaymobEnum::PAYMOB_DOMAIN.PaymobEnum::IFRAME_REQUEST
@@ -103,13 +95,13 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
 
     /**
      *
-     * depending of what the callback will do
+     * depending on what the callback will do
      *
      * event and the user deal with the response if PAID,EXPIRED etc
      *
      *
      */
-    public function callBack($request)
+    public function callBack($request): void
     {
 
         $paymentId=explode("Paymob",$request["merchant_order_id"]);
@@ -120,11 +112,11 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
                 $payment->payment_status_id = "PAID";
                 $payment->save();
 
-            }else
+            }
+            else {
                 $this->saveToLogs($request, $request["data_message"] );
-
+            }
         }catch (\Exception $e) {
-
             $this->saveToLogs($request, $e->getMessage());
         }
 
@@ -141,7 +133,7 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
 
         $user=auth()->user();
 
-        $record=Payment::create(
+        $record= Payment::create(
             [
                 "model_id"=>$user->id,
                 "model_table" => $user->getTable(),
@@ -154,21 +146,26 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
             ]
         );
 
-        if ($record)
-            $this->merchantRefNum=$record->id;
+        if ($record) {
+            $this->merchantRefNum = $record->id;
+        }
 
         return $this;
     }
 
 
+    /**
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     */
     public function authenticationRequest(): mixed
     {
        $result= $this->post(PaymobEnum::PAYMOB_DOMAIN.PaymobEnum::TOKENS_REQUEST, ["api_key" => $this->integrations['PAYMOB_API_KEY']]);
 
-       if ($result['status'])
-            return json_decode($result['data']);
+       if ($result['status']) {
+           return json_decode($result['data']);
+       }
 
-        throw new \Exception($result['message']);
+        throw new \RuntimeException($result['message']);
 
     }
 
@@ -185,10 +182,11 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
                     "items" => []
                 ]);
 
-        if ($result['status'])
+        if ($result['status']) {
             return json_decode($result['data']);
+        }
 
-        throw new \Exception($result['message']);
+        throw new \RuntimeException($result['message']);
 
     }
 
@@ -196,7 +194,7 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
      * @param mixed $order
      * @param string $token
      * @return mixed
-     * @throws \Exception
+     * @throws \Exception|\GuzzleHttp\Exception\GuzzleException
      *
      * create request and fir event
      * the event push data by reference
@@ -228,10 +226,11 @@ class PaymobPaymentService implements IPaymentInterface,IPaymobInterface
 
         $result = $this->post(PaymobEnum::PAYMOB_DOMAIN.PaymobEnum::PAYMENT_TOKEN_REQUEST,$request);
 
-        if ($result['status'])
+        if ($result['status']) {
             return json_decode($result['data']);
+        }
 
-        throw new \Exception($result['message']);
+        throw new \RuntimeException($result['message']);
 
     }
 

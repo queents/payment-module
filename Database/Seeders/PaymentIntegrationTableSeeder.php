@@ -35,12 +35,12 @@ class PaymentIntegrationTableSeeder extends Seeder
             [
                 'payment_method_id' => 2,
                 'key' => 'merchant_code',
-                'value' => 'siYxylRjSPwyUDLWDo/Dsw=='
+                'value' => ''
             ],
             [
                 'payment_method_id' => 2,
                 'key' => 'security_key',
-                'value' => '3210548d-5d93-453d-8dba-a1bdc5c2eb11'
+                'value' => ''
             ],
             [
                 'payment_method_id' => 1,
@@ -60,12 +60,12 @@ class PaymentIntegrationTableSeeder extends Seeder
             [
                 'payment_method_id' => 1,
                 'key' => 'merchant_code',
-                'value' => 'siYxylRjSPwyUDLWDo/Dsw=='
+                'value' => ''
             ],
             [
                 'payment_method_id' => 1,
                 'key' => 'security_key',
-                'value' => '3210548d-5d93-453d-8dba-a1bdc5c2eb11'
+                'value' => ''
             ],
             //paymob
             [
@@ -81,43 +81,49 @@ class PaymentIntegrationTableSeeder extends Seeder
             [
                 'payment_method_id' => 3,
                 'key' => 'PAYMOB_API_KEY',
-                'value' => 'ZXlKMGVYQWlPaUpLVjFRaUxDSmhiR2NpT2lKSVV6VXhNaUo5LmV5SndjbTltYVd4bFgzQnJJam95TWpreE16RXNJbU5zWVhOeklqb2lUV1Z5WTJoaGJuUWlMQ0p1WVcxbElqb2lhVzVwZEdsaGJDSjkuM1EyeFNFYmx3b2JCSE9KaE1PZmJwWVhyWklhRjFaREYwQnJFWVJDM292TnBXREpBVVBUUWdSaWs1MF80N0k5WkQ5R3U4NTdrNGxmeEhieGlWQUlYNHc=='
+                'value' => ''
             ],
             [
                 'payment_method_id' => 3,
                 'key' => 'PAYMOB_SANDBOX_INTEGRATION_ID',
-                'value' => '2350674'
+                'value' => ''
             ],
             [
                 'payment_method_id' => 3,
                 'key' => 'PAYMOB_LIVE_INTEGRATION_ID',
-                'value' => '2350674'
+                'value' => ''
             ],
             [
                 'payment_method_id' => 3,
                 'key' => 'PAYMOB_IFRAME_ID',
-                'value' => '420271'
+                'value' => ''
             ],
             //pay tabs
             [
                 'payment_method_id' => 4,
                 'key' => 'merchant_email',
-                'value' => 'khaled.abodaif@yahoo.com'
+                'value' => ''
             ],
             [
                 'payment_method_id' => 4,
                 'key' => 'secret_key',
-                'value' => 'SRJN6BMLMR-JG2KJ9WLJH-MZDWNMBLHJ'
+                'value' => ''
             ],
             [
                 'payment_method_id' => 4,
                 'key' => 'profile_id',
-                'value' => '103540'
+                'value' => ''
             ],
             [
                 'payment_method_id' => 4,
                 'key' => 'class_name',
                 'value' => 'Modules\Payment\Http\Services\PayTabsPaymentService'
+            ],
+            //cash on delivery
+            [
+                'payment_method_id' => 5,
+                'key' => 'class_name',
+                'value' => 'Modules\Payment\Http\Services\CashOnDelivery'
             ],
         ];
 

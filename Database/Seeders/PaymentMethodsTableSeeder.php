@@ -63,7 +63,19 @@ class PaymentMethodsTableSeeder extends Seeder
                 ],
                 'icon'=>"bx bx-circle",
                 'color'=>"#ff0000",
-            ]
+            ],
+            [
+                'name' => [
+                    "ar"=>"دفع عند التوصيل",
+                    "en"=>"Cash On Delivery",
+                ],
+                'description' => [
+                    "ar"=>"دفع عند التوصيل",
+                    "en"=>"Cash On Delivery",
+                ],
+                'icon'=>"bx bx-circle",
+                'color'=>"#b69ddd",
+            ],
         ];
 
         foreach ($rows as $row){

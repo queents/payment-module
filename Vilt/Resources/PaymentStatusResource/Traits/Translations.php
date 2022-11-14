@@ -8,7 +8,7 @@ trait Translations
     public function loadTranslations(): array
     {
         return [
-            "index" => __(" Payment Statuss"),
+            "index" => __(" Payment Status"),
             "create" => __('Create ' . " Payment Status"),
             "bulk" => __('Delete Selected ' . " Payment Status"),
             "edit_title" => __('Edit ' . " Payment Status"),

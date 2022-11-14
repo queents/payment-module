@@ -4,9 +4,11 @@
 namespace Modules\Payment\Http\Services;
 
 
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Modules\Payment\Entities\Payment;
 use Modules\Payment\Enums\PaytabEnum;
 use Modules\Payment\Events\CallBackEvent;
 use Modules\Payment\Events\PaytabsCallBackEvent;
@@ -15,24 +17,37 @@ use Modules\Payment\Http\Helpers\ApiResponse;
 use Modules\Payment\Http\Helpers\HttpHelper;
 use Modules\Payment\Http\Helpers\PaymentSaveToLogs;
 use Modules\Payment\Http\Interfaces\IPaymentInterface;
-use Modules\Payments\Entities\Payment;
 
+/**
+ *
+ */
 class PayTabsPaymentService implements IPaymentInterface
 {
     use HttpHelper,PaymentSaveToLogs;
 
+    /**
+     * @var mixed
+     */
+    private mixed $merchantRefNum;
 
+    /**
+     * @var array
+     */
+    private array $integrations;
 
-    private  $merchantRefNum;
-    private $integrations;
-    private $data = [];
+    /**
+     * @var array
+     */
+    private Collection $data ;
 
-
-
+    /**
+     * @param $integrations
+     */
     public function __construct($integrations)
     {
-        foreach ($integrations as $integration)
+        foreach ($integrations as $integration) {
             $this->integrations[$integration->key] = $integration->value;
+        }
     }
 
     /**
@@ -47,13 +62,15 @@ class PayTabsPaymentService implements IPaymentInterface
 
         if ($validation->fails()) {
             throw ValidationException::withMessages($validation->errors()->messages());
-
         }
 
         $this->data = collect($validation->validated());
         return $this;
     }
 
+    /**
+     * @return $this
+     */
     public function init():self
     {
         // in http helper
@@ -77,6 +94,10 @@ class PayTabsPaymentService implements IPaymentInterface
         return $this;
     }
 
+    /**
+     * @return array
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     */
     public function pay():array
     {
         $response=$this->post(PaytabEnum::PAYTABS_DOMAIN,$this->data);
@@ -84,15 +105,24 @@ class PayTabsPaymentService implements IPaymentInterface
         return $response;
     }
 
-    public function callBack($request)
+    /**
+     * @param $request
+     * @return void
+     */
+    public function callBack($request): void
     {
         event(new PaytabsCallBackEvent($request));
     }
 
+    /**
+     * @return $this
+     * @throws \Psr\Container\ContainerExceptionInterface
+     * @throws \Psr\Container\NotFoundExceptionInterface
+     */
     public function saveToPayment():self
     {
         $user=auth()->user();
-        $record=Payment::create(
+        $record= Payment::create(
             [
                 "model_id"=>$user->id,
                 "model_table" => $user->getTable(),
@@ -105,8 +135,9 @@ class PayTabsPaymentService implements IPaymentInterface
 
             ]
         );
-        if ($record)
-            $this->merchantRefNum=$record->id;
+        if ($record) {
+            $this->merchantRefNum = $record->id;
+        }
 
         return $this;
     }
